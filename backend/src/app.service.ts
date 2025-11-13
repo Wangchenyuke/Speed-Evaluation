@@ -11,7 +11,7 @@ export class AppService {
       message: 'SPEED backend is running',
       timestamp: new Date().toISOString(),
     };
-  }3333
+  }
 
   getHealth() {
     const statusMap: Record<number, string> = {
@@ -19,7 +19,7 @@ export class AppService {
       1: 'connected',
       2: 'connecting',
       3: 'disconnecting',
-    };3333
+    };
 
     return {
       status: 'ok',
