@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SPEED - Review Queue</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="auth.js"></script>
+    <script src="data.js"></script>
+  </head>
+  <body>
+    <nav class="top-nav">
+      <a class="logo" href="index.html">SPEED</a>
+      <div class="nav-actions"></div>
+    </nav>
+
+    <main class="page-container">
+      <section class="content-section">
+        <div class="form-container">
+          <header class="form-header">
+            <h1>Review Queue</h1>
+            <p>Pending literature submissions awaiting reviewer action.</p>
+          </header>
+
+          <div id="queueContainer">
+            <!-- Pending items will be rendered here -->
+          </div>
+
+        </div>
+      </section>
+
+      <footer class="page-footer">
+        <strong>SPEED - Software Practice Empirical Evidence Database</strong>
+      </footer>
+    </main>
+
+    <script>
+      // Ensure navigation is updated
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => Auth.updateNavigation());
+      } else {
+        Auth.updateNavigation();
+      }
+
+      function requireReviewer() {
+        const user = Auth.getCurrentUser();
+        if (!user) {
+          alert('Please login as a reviewer to access this page.');
+          window.location.href = 'login.html';
+          return false;
+        }
+        if (!Auth.isReviewer()) {
+          alert('You do not have reviewer permissions.');
+          window.location.href = 'index.html';
+          return false;
+        }
+        return true;
+      }
+
+      function renderQueue() {
+        if (!requireReviewer()) return;
+
+        const pending = LiteratureData.getPending();
+        const container = document.getElementById('queueContainer');
+        if (!pending || pending.length === 0) {
+          container.innerHTML = '<p style="color:#52606d; padding:20px; text-align:center;">No pending submissions.</p>';
+          return;
+        }
+
+        container.innerHTML = pending.map(item => {
+          return `
+            <div class="recent-item" id="item-${item.id}">
+              <div class="recent-item-header">
+                <h4>${item.title}</h4>
+                <span class="recent-year">${item.year}</span>
+              </div>
+              <div class="recent-item-meta">
+                <span class="recent-author">${item.author}</span>
+                <span class="recent-practice">${item.practice}</span>
+              </div>
+              <div style="margin-top:8px; color:#334e68">DOI: ${item.doi}</div>
+              <div style="margin-top:12px; display:flex; gap:12px;">
+                <button class="btn-primary" onclick="handleApprove(${item.id})">Approve</button>
+                <button class="btn-ghost" onclick="handleRejectPrompt(${item.id})">Reject</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      function handleApprove(id) {
+        if (!confirm('Approve this submission?')) return;
+        const user = Auth.getCurrentUser();
+        const res = LiteratureData.approve(id, user ? user.email : null);
+        if (res && res.success) {
+          alert('Approved');
+          renderQueue();
+          Auth.updatePendingBadge();
+        } else {
+          alert('Operation failed');
+        }
+      }
+
+      function handleRejectPrompt(id) {
+        const reason = prompt('Enter rejection reason (optional):');
+        if (reason === null) return; // cancelled
+        const user = Auth.getCurrentUser();
+        const res = LiteratureData.reject(id, reason || '', user ? user.email : null);
+        if (res && res.success) {
+          alert('Rejected');
+          renderQueue();
+          Auth.updatePendingBadge();
+        } else {
+          alert('Operation failed');
+        }
+      }
+
+      // Initialize
+      renderQueue();
+    </script>
+  </body>
+</html>
