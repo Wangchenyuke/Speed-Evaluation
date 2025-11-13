@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SPEED - Home</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="auth.js"></script>
+    <script src="data.js"></script>
+  </head>
+  <body>
+    <nav class="top-nav">
+      <a class="logo" href="index.html">SPEED</a>
+      <div class="nav-actions">
+        <a class="btn-primary" href="submission.html">Submit Literature</a>
+        <button class="btn-primary" onclick="navigate('register')">Register</button>
+        <button class="btn-primary" onclick="navigate('login')">Login</button>
+      </div>
+    </nav>
+
+    <main class="page-container">
+      <section class="content-section">
+        <div class="search-card">
+          <h1 style="margin-top: 0; color: #102a43; font-size: 32px">
+            Connecting Academic Evidence with Industry Practice
+          </h1>
+          <p style="color: #52606d; margin-bottom: 28px">
+            Search for empirical evidence of software engineering practices in the experience database.
+          </p>
+          <div class="search-controls">
+            <input
+              id="searchInput"
+              class="search-input"
+              type="text"
+              placeholder="Enter software engineering practice name, e.g., TDD"
+            />
+            <button class="btn-primary" id="searchBtn" aria-label="Perform search">
+              🔍 Search
+            </button>
+          </div>
+          <div class="popular-tags" aria-label="Popular search tags">
+            <span class="tag" data-tag="TDD">TDD</span>
+            <span class="tag" data-tag="Pair Programming">Pair Programming</span>
+            <span class="tag" data-tag="Continuous Integration">Continuous Integration</span>
+            <span class="tag" data-tag="Code Review">Code Review</span>
+            <span class="tag" data-tag="Defect Tracking">Defect Tracking</span>
+          </div>
+        </div>
+
+        <!-- Statistics Section -->
+        <div class="stats-container" id="statsContainer">
+          <div class="stat-card">
+            <div class="stat-icon">📚</div>
+            <div class="stat-content">
+              <div class="stat-number" id="totalLiterature">0</div>
+              <div class="stat-label">Total Literature</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🔬</div>
+            <div class="stat-content">
+              <div class="stat-number" id="totalPractices">0</div>
+              <div class="stat-label">Practices Covered</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-content">
+              <div class="stat-number" id="totalStudies">0</div>
+              <div class="stat-label">Research Studies</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Features Section -->
+        <div class="features-section">
+          <h2 style="text-align: center; color: #102a43; margin-bottom: 32px">Platform Features</h2>
+          <div class="features-grid">
+            <div class="feature-card">
+              <div class="feature-icon">🔍</div>
+              <h3>Advanced Search</h3>
+              <p>Search by practice name, author, title, or use multiple filters to find relevant evidence quickly.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">📝</div>
+              <h3>Submit Literature</h3>
+              <p>Contribute to the database by submitting academic literature with empirical evidence on software practices.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">📈</div>
+              <h3>Evidence-Based</h3>
+              <p>All entries are based on peer-reviewed research with clear conclusions and research methodologies.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">🎯</div>
+              <h3>Practice Focus</h3>
+              <p>Focused on software engineering practices with empirical evidence from controlled studies and case studies.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Literature Section -->
+        <div class="recent-section" id="recentSection">
+          <h2 style="text-align: center; color: #102a43; margin-bottom: 24px">Recent Additions</h2>
+          <div class="recent-list" id="recentList">
+            <!-- Will be populated by JavaScript -->
+          </div>
+        </div>
+      </section>
+      <footer class="page-footer">
+        <strong
+          >SPEED - Software Practice Empirical Evidence Database, Connecting Academic Research with Industry Applications</strong
+        >
+        <small
+          >This platform only provides academic evidence queries and does not involve original literature downloads to avoid copyright risks</small
+        >
+      </footer>
+    </main>
+
+    <script>
+      const searchInput = document.getElementById("searchInput");
+      const searchBtn = document.getElementById("searchBtn");
+      const popularTags = document.querySelectorAll(".tag");
+
+      function performSearch(keyword) {
+        const query = keyword || searchInput.value.trim();
+        if (query) {
+          window.location.href = `search.html?q=${encodeURIComponent(query)}`;
+        } else {
+          window.location.href = "search.html";
+        }
+      }
+
+      function navigate(type) {
+        window.location.href = type === "login" ? "login.html" : "register.html";
+      }
+
+      searchBtn.addEventListener("click", () => performSearch());
+      searchInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          performSearch();
+        }
+      });
+
+      popularTags.forEach((tag) => {
+        tag.addEventListener("click", () => performSearch(tag.dataset.tag));
+      });
+
+      // Load statistics and recent literature
+      function loadStatistics() {
+        const allData = LiteratureData.getAll();
+        const totalLiterature = allData.length;
+        
+        // Count unique practices
+        const practices = new Set(allData.map(item => item.practice));
+        const totalPractices = practices.size;
+        
+        // Count by research type
+        const totalStudies = allData.length;
+
+        document.getElementById("totalLiterature").textContent = totalLiterature;
+        document.getElementById("totalPractices").textContent = totalPractices;
+        document.getElementById("totalStudies").textContent = totalStudies;
+      }
+
+      function loadRecentLiterature() {
+        const allData = LiteratureData.getAll();
+        // Sort by year (most recent first), then by id
+        const recent = [...allData]
+          .sort((a, b) => {
+            if (b.year !== a.year) return b.year - a.year;
+            return b.id - a.id;
+          })
+          .slice(0, 3); // Show top 3 most recent
+
+        const recentList = document.getElementById("recentList");
+        
+        if (recent.length === 0) {
+          recentList.innerHTML = '<p style="text-align: center; color: #52606d; padding: 20px;">No literature available yet.</p>';
+          return;
+        }
+
+        recentList.innerHTML = recent.map(item => {
+          const practice = item.practice.replace(/'/g, "\\'");
+          return `
+          <div class="recent-item" onclick="performSearch('${practice}')">
+            <div class="recent-item-header">
+              <h4>${item.title}</h4>
+              <span class="recent-year">${item.year}</span>
+            </div>
+            <div class="recent-item-meta">
+              <span class="recent-author">${item.author}</span>
+              <span class="recent-practice">${item.practice}</span>
+            </div>
+            <div class="recent-item-footer">
+              <span class="recent-conclusion conclusion-${item.conclusion.toLowerCase()}">${item.conclusion}</span>
+              <span class="recent-type">${item.type}</span>
+            </div>
+          </div>
+        `;
+        }).join('');
+      }
+
+      // Initialize on page load
+      loadStatistics();
+      loadRecentLiterature();
+    </script>
+  </body>
+</html>
+

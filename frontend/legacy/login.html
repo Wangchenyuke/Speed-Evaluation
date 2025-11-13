@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SPEED - Login</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="auth.js"></script>
+  </head>
+  <body>
+    <nav class="top-nav">
+      <a class="logo" href="index.html">SPEED</a>
+      <div class="nav-actions">
+        <a class="btn-primary" href="submission.html">Submit Literature</a>
+        <button class="btn-primary" onclick="navigate('register')">Register</button>
+        <button class="btn-primary" onclick="navigate('login')">Login</button>
+      </div>
+    </nav>
+
+    <main class="page-container">
+      <section class="content-section">
+        <div class="form-container">
+          <header class="form-header">
+            <h1>Login</h1>
+            <p>Please enter your credentials to access your account.</p>
+          </header>
+          <form id="loginForm" novalidate>
+            <div class="form-group" data-field="email">
+              <label for="email">
+                <span class="required">*</span>
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                placeholder="Enter your email address"
+                required
+              />
+              <span class="form-error">This field is required</span>
+            </div>
+
+            <div class="form-group" data-field="password">
+              <label for="password">
+                <span class="required">*</span>
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                placeholder="Enter your password"
+                required
+              />
+              <span class="form-error">This field is required</span>
+            </div>
+
+            <div class="form-actions">
+              <a href="index.html" class="btn-ghost">Cancel</a>
+              <button type="submit" class="btn-primary">Login</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <footer class="page-footer">
+        <strong
+          >SPEED - Software Practice Empirical Evidence Database, Connecting Academic Research with Industry Applications</strong
+        >
+        <small
+          >This platform only provides academic evidence queries and does not involve original literature downloads to avoid copyright risks</small
+        >
+      </footer>
+    </main>
+
+    <script>
+      const form = document.getElementById("loginForm");
+      const formGroups = Array.from(document.querySelectorAll(".form-group"));
+
+      function navigate(type) {
+        window.location.href = type === "login" ? "login.html" : "register.html";
+      }
+
+      function showError(group, message) {
+        group.classList.add("invalid");
+        const errorElement = group.querySelector(".form-error");
+        if (errorElement && message) {
+          errorElement.textContent = message;
+        }
+      }
+
+      function clearError(group) {
+        group.classList.remove("invalid");
+      }
+
+      function validateField(group) {
+        const input = group.querySelector("input");
+        if (!input) return true;
+
+        if (input.hasAttribute("required") && !input.value.trim()) {
+          showError(group, "This field is required");
+          return false;
+        }
+
+        if (group.dataset.field === "email" && input.value.trim()) {
+          const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailPattern.test(input.value.trim())) {
+            showError(group, "Please enter a valid email address");
+            return false;
+          }
+        }
+
+        clearError(group);
+        return true;
+      }
+
+      formGroups.forEach((group) => {
+        const inputs = group.querySelectorAll("input");
+        inputs.forEach((input) => {
+          input.addEventListener("input", () => validateField(group));
+          input.addEventListener("blur", () => validateField(group));
+        });
+      });
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        let valid = true;
+        formGroups.forEach((group) => {
+          if (!validateField(group)) {
+            valid = false;
+          }
+        });
+
+        if (!valid) {
+          alert("Please check and correct form errors before submitting.");
+          return;
+        }
+
+        // Get form values
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
+
+        // Attempt to login
+        const result = Auth.login(email, password);
+
+        if (result.success) {
+          alert(result.message);
+          // Update navigation before redirecting
+          Auth.updateNavigation();
+          window.location.href = "index.html";
+        } else {
+          // Show error message
+          const emailGroup = document.querySelector('[data-field="email"]');
+          const passwordGroup = document.querySelector('[data-field="password"]');
+          showError(emailGroup, result.message);
+          showError(passwordGroup, "");
+        }
+      });
+    </script>
+  </body>
+</html>
+
