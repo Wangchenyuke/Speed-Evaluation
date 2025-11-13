@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SPEED - Search Results</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="auth.js"></script>
+    <script src="data.js"></script>
+  </head>
+  <body>
+    <nav class="top-nav">
+      <a class="logo" href="index.html">SPEED</a>
+      <div class="nav-actions">
+        <a class="btn-primary" href="submission.html">Submit Literature</a>
+        <button class="btn-primary" onclick="navigate('register')">Register</button>
+        <button class="btn-primary" onclick="navigate('login')">Login</button>
+      </div>
+    </nav>
+
+    <main class="page-container">
+      <section class="filter-bar" aria-label="Search filters">
+        <div class="filter-group">
+          <label for="yearRange">Year Range</label>
+          <select id="yearRange">
+            <option value="all">All Years</option>
+            <option value="3">Last 3 Years</option>
+            <option value="5">Last 5 Years</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>Conclusion Type</label>
+          <div class="checkbox-group">
+            <label>
+              <input type="checkbox" value="Support" checked />
+              Support
+            </label>
+            <label>
+              <input type="checkbox" value="Oppose" checked />
+              Oppose
+            </label>
+            <label>
+              <input type="checkbox" value="Neutral" checked />
+              Neutral
+            </label>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label for="researchType">Research Type</label>
+          <select id="researchType">
+            <option value="all">All Types</option>
+            <option value="Experiment">Experiment</option>
+            <option value="Case Study">Case Study</option>
+            <option value="Review">Review</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <button class="btn-ghost" id="resetFilters">Reset Filters</button>
+      </section>
+
+      <section class="table-wrapper">
+        <div class="results-table-container">
+          <div class="table-header">
+            <h2 style="margin: 0; color: #102a43; font-size: 22px">
+              Search Results
+            </h2>
+            <div style="position: relative">
+              <button class="column-toggle" id="columnToggle">
+                Show/Hide Columns
+              </button>
+              <div class="dropdown-menu" id="columnDropdown"></div>
+            </div>
+          </div>
+          <div style="max-height: 420px; overflow: auto">
+            <table class="results-table" id="resultsTable">
+              <thead>
+                <tr>
+                  <th data-column="title">Title</th>
+                  <th data-column="author">Author</th>
+                  <th data-column="year">Year</th>
+                  <th data-column="practice">Practice</th>
+                  <th data-column="conclusion">Conclusion</th>
+                  <th data-column="type">Research Type</th>
+                </tr>
+              </thead>
+              <tbody id="resultsBody"></tbody>
+            </table>
+          </div>
+          <div class="no-results" id="noResults" hidden>
+            No relevant evidence found. Please adjust keywords or filter conditions.
+          </div>
+        </div>
+
+        <div class="pagination" id="pagination"></div>
+      </section>
+
+      <footer class="page-footer">
+        <strong
+          >SPEED - Software Practice Empirical Evidence Database, Connecting Academic Research with Industry Applications</strong
+        >
+        <small
+          >This platform only provides academic evidence queries and does not involve original literature downloads to avoid copyright risks</small
+        >
+      </footer>
+    </main>
+
+    <script>
+      const searchParams = new URLSearchParams(window.location.search);
+      const query = searchParams.get("q") || "";
+
+      // Get data from storage (will include default data and user submissions)
+      let data = LiteratureData.getAll();
+
+      const filters = {
+        yearRange: "all",
+        conclusions: new Set(["Support", "Oppose", "Neutral"]),
+        researchType: "all"
+      };
+
+      const itemsPerPage = 5;
+      let currentPage = 1;
+      let sortState = { column: "year", direction: "desc" };
+      const visibleColumns = new Set([
+        "title",
+        "author",
+        "year",
+        "practice",
+        "conclusion",
+        "type"
+      ]);
+
+      const resultsBody = document.getElementById("resultsBody");
+      const noResults = document.getElementById("noResults");
+      const pagination = document.getElementById("pagination");
+      const yearRangeSelect = document.getElementById("yearRange");
+      const researchTypeSelect = document.getElementById("researchType");
+      const resetFiltersBtn = document.getElementById("resetFilters");
+      const columnToggleBtn = document.getElementById("columnToggle");
+      const columnDropdown = document.getElementById("columnDropdown");
+
+      const conclusionCheckboxes = Array.from(
+        document.querySelectorAll('.checkbox-group input[type="checkbox"]')
+      );
+
+      const columnsConfig = [
+        { key: "title", label: "Title" },
+        { key: "author", label: "Author" },
+        { key: "year", label: "Year" },
+        { key: "practice", label: "Practice" },
+        { key: "conclusion", label: "Conclusion" },
+        { key: "type", label: "Research Type" }
+      ];
+
+      function navigate(type) {
+        window.location.href = type === "login" ? "login.html" : "register.html";
+      }
+
+      function filterData() {
+        // Use LiteratureData.search for better search functionality
+        const searchResults = LiteratureData.search(query, {
+          yearRange: filters.yearRange,
+          conclusions: filters.conclusions,
+          researchType: filters.researchType
+        });
+        
+        return searchResults;
+      }
+
+      function sortData(list) {
+        const sorted = [...list].sort((a, b) => {
+          const { column, direction } = sortState;
+          const valueA = a[column];
+          const valueB = b[column];
+          if (valueA < valueB) return direction === "asc" ? -1 : 1;
+          if (valueA > valueB) return direction === "asc" ? 1 : -1;
+          return 0;
+        });
+        return sorted;
+      }
+
+      function paginateData(list) {
+        const start = (currentPage - 1) * itemsPerPage;
+        return list.slice(start, start + itemsPerPage);
+      }
+
+      function renderTable() {
+        const filtered = filterData();
+        const sorted = sortData(filtered);
+        const paginated = paginateData(sorted);
+
+        resultsBody.innerHTML = "";
+
+        if (filtered.length === 0) {
+          noResults.hidden = false;
+        } else {
+          noResults.hidden = true;
+        }
+
+        paginated.forEach((item) => {
+          const tr = document.createElement("tr");
+          tr.addEventListener("click", () => {
+            alert(`Navigate to literature detail page: ${item.title}`);
+          });
+
+          columnsConfig.forEach((col) => {
+            const td = document.createElement("td");
+            td.dataset.column = col.key;
+            td.textContent = item[col.key];
+            if (!visibleColumns.has(col.key)) {
+              td.style.display = "none";
+            }
+            tr.appendChild(td);
+          });
+          resultsBody.appendChild(tr);
+        });
+
+        renderPagination(filtered.length);
+      }
+
+      function renderPagination(totalItems) {
+        const totalPages = Math.max(Math.ceil(totalItems / itemsPerPage), 1);
+        if (currentPage > totalPages) currentPage = totalPages;
+
+        pagination.innerHTML = "";
+
+        const prevBtn = document.createElement("button");
+        prevBtn.className = "btn-ghost";
+        prevBtn.textContent = "Previous";
+        prevBtn.disabled = currentPage === 1;
+        prevBtn.addEventListener("click", () => {
+          currentPage = Math.max(currentPage - 1, 1);
+          renderTable();
+        });
+
+        const nextBtn = document.createElement("button");
+        nextBtn.className = "btn-ghost";
+        nextBtn.textContent = "Next";
+        nextBtn.disabled = currentPage === totalPages;
+        nextBtn.addEventListener("click", () => {
+          currentPage = Math.min(currentPage + 1, totalPages);
+          renderTable();
+        });
+
+        pagination.appendChild(prevBtn);
+
+        for (let page = 1; page <= totalPages; page++) {
+          const span = document.createElement("button");
+          span.className = "page-number";
+          if (page === currentPage) {
+            span.classList.add("active");
+          }
+          span.textContent = page;
+          span.addEventListener("click", () => {
+            currentPage = page;
+            renderTable();
+          });
+          pagination.appendChild(span);
+        }
+
+        pagination.appendChild(nextBtn);
+      }
+
+      function handleSort(event) {
+        const th = event.target.closest("th");
+        if (!th) return;
+        const column = th.dataset.column;
+        if (!column) return;
+
+        if (sortState.column === column) {
+          sortState.direction = sortState.direction === "asc" ? "desc" : "asc";
+        } else {
+          sortState.column = column;
+          sortState.direction = column === "year" ? "desc" : "asc";
+        }
+        renderTable();
+      }
+
+      function setupColumnDropdown() {
+        columnDropdown.innerHTML = "";
+        columnsConfig.forEach((col) => {
+          const item = document.createElement("label");
+          item.className = "dropdown-item";
+
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.checked = visibleColumns.has(col.key);
+          checkbox.addEventListener("change", () => {
+            if (!checkbox.checked) {
+              visibleColumns.delete(col.key);
+            } else {
+              visibleColumns.add(col.key);
+            }
+            updateColumnVisibility();
+          });
+
+          item.appendChild(checkbox);
+          item.appendChild(document.createTextNode(col.label));
+          columnDropdown.appendChild(item);
+        });
+      }
+
+      function updateColumnVisibility() {
+        const headers = document.querySelectorAll(".results-table th");
+        headers.forEach((th) => {
+          const column = th.dataset.column;
+          if (visibleColumns.has(column)) {
+            th.style.display = "";
+          } else {
+            th.style.display = "none";
+          }
+        });
+
+        resultsBody.querySelectorAll("tr").forEach((row) => {
+          row.querySelectorAll("td").forEach((cell) => {
+            const column = cell.dataset.column;
+            if (visibleColumns.has(column)) {
+              cell.style.display = "";
+            } else {
+              cell.style.display = "none";
+            }
+          });
+        });
+      }
+
+      yearRangeSelect.addEventListener("change", (event) => {
+        filters.yearRange = event.target.value;
+        currentPage = 1;
+        renderTable();
+      });
+
+      researchTypeSelect.addEventListener("change", (event) => {
+        filters.researchType = event.target.value;
+        currentPage = 1;
+        renderTable();
+      });
+
+      conclusionCheckboxes.forEach((checkbox) =>
+        checkbox.addEventListener("change", (event) => {
+          const { value, checked } = event.target;
+          if (checked) {
+            filters.conclusions.add(value);
+          } else {
+            filters.conclusions.delete(value);
+          }
+          currentPage = 1;
+          renderTable();
+        })
+      );
+
+      resetFiltersBtn.addEventListener("click", () => {
+        yearRangeSelect.value = "all";
+        researchTypeSelect.value = "all";
+        conclusionCheckboxes.forEach((checkbox) => {
+          checkbox.checked = true;
+        });
+        filters.yearRange = "all";
+        filters.researchType = "all";
+        filters.conclusions = new Set(["Support", "Oppose", "Neutral"]);
+        currentPage = 1;
+        renderTable();
+      });
+
+      document
+        .querySelector(".results-table thead")
+        .addEventListener("click", handleSort);
+
+      columnToggleBtn.addEventListener("click", () => {
+        columnDropdown.classList.toggle("show");
+      });
+
+      document.addEventListener("click", (event) => {
+        if (
+          !columnToggleBtn.contains(event.target) &&
+          !columnDropdown.contains(event.target)
+        ) {
+          columnDropdown.classList.remove("show");
+        }
+      });
+
+      // Refresh data when page loads or filters change
+      function refreshData() {
+        data = LiteratureData.getAll();
+        currentPage = 1;
+        renderTable();
+      }
+
+      setupColumnDropdown();
+      refreshData();
+      updateColumnVisibility();
+    </script>
+  </body>
+</html>
+
