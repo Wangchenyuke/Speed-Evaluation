@@ -19,7 +19,7 @@ export class AppService {
       1: 'connected',
       2: 'connecting',
       3: 'disconnecting',
-    };
+    };3333
 
     return {
       status: 'ok',
